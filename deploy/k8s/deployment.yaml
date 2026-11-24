@@ -15,9 +15,11 @@ spec:
       labels:
         app: kainatledger-backend
     spec:
+      imagePullSecrets:
+        - name: acr-cred-secret
       containers:
         - name: backend
-          image: magnus-registry-registry.ap-southeast-5.cr.aliyuncs.com/kainatledger/kainatledger:latest
+          image: magnus-registry-registry-vpc.ap-southeast-5.cr.aliyuncs.com/kainatledger/kainatledger:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

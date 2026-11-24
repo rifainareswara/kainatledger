@@ -39,9 +39,11 @@ spec:
   template:
     spec:
       automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: acr-cred-secret
       containers:
       - name: alembic
-        image: magnus-registry-registry.ap-southeast-5.cr.aliyuncs.com/kainatledger/kainatledger:latest
+        image: magnus-registry-registry-vpc.ap-southeast-5.cr.aliyuncs.com/kainatledger/kainatledger:latest
         command: ["alembic", "upgrade", "head"]
         envFrom:
         - secretRef:
