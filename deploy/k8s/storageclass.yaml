@@ -1,0 +1,13 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: alicloud-disk-ssd
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: disk.csi.alibabacloud.com
+parameters:
+  type: cloud_ssd
+  regionId: ap-southeast-5
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

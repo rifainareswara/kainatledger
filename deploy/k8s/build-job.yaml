@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acr-cred-secret
+  namespace: kainatledger
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: '{"auths":{"magnus-registry-registry.ap-southeast-5.cr.aliyuncs.com":{"username":"vanapp","password":"vanapp","auth":"dmFuYXBwOnZhbmFwcA=="}}}'
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build-and-push
+  namespace: kainatledger
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: kaniko
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+          - --context=git://Users/rifai/code/kainatledger#main
+          - --destination=magnus-registry-registry.ap-southeast-5.cr.aliyuncs.com/kainatledger/kainatledger:latest
+          - --dockerfile=backend/Dockerfile
+          - --build-arg=VCS_REF=main
+        volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+      volumes:
+      - name: docker-config
+        secret:
+          secretName: acr-cred-secret
+      restartPolicy: Never

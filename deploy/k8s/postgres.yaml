@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pg-secret
+  namespace: kainatledger
+type: Opaque
+stringData:
+  POSTGRES_USER: kainat
+  POSTGRES_PASSWORD: kainat_secure_password
+  POSTGRES_DB: kainatledger
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: kainatledger
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: alicloud-disk-topology-alltype
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-kainatledger
+  namespace: kainatledger
+spec:
+  selector:
+    matchLabels:
+      app: postgres-kainatledger
+  serviceName: "postgres-kainatledger"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres-kainatledger
+    spec:
+      containers:
+        - name: postgres-kainatledger
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: pg-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pg-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: pg-secret
+                  key: POSTGRES_DB
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          livenessProbe:
+            exec:
+              command: ["sh","-c","pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["sh","-c","pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-kainatledger
+  namespace: kainatledger
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres-kainatledger

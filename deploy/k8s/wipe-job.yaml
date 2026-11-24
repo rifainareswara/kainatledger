@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-wipe
+  namespace: kainatledger
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: pg-wipe
+        image: postgres:16-alpine
+        command: ["psql", "-h", "postgres-kainatledger", "-U", "kainat", "-d", "kainatledger", "-c", "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"]
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-secret
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+            ephemeral-storage: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+            ephemeral-storage: "512Mi"
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alembic-migrate
+  namespace: kainatledger
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: alembic
+        image: magnus-registry-registry.ap-southeast-5.cr.aliyuncs.com/kainatledger/kainatledger:latest
+        command: ["alembic", "upgrade", "head"]
+        envFrom:
+        - secretRef:
+            name: kainatledger-secret
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+            ephemeral-storage: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+            ephemeral-storage: "1Gi"
+      restartPolicy: Never

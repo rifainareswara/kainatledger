@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kainat}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kainat_secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-kainatledger}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kainat} -d ${POSTGRES_DB:-kainatledger}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-kainat}:${POSTGRES_PASSWORD:-kainat_secure_password}@db:5432/${POSTGRES_DB:-kainatledger}
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: "false"
+      CORS_ORIGINS: '["https://kainatledger.app","http://localhost:8080"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  web:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./mobile/build/web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  postgres_prod_data:

@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kainat
+      POSTGRES_PASSWORD: kainat
+      POSTGRES_DB: kainatledger
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kainat -d kainatledger"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kainat:kainat@db:5432/kainatledger
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+volumes:
+  postgres_data:
